@@ -1,0 +1,48 @@
+{
+  "rooms": [
+    {
+      "id": "A0.01",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=29&tmpl=component"
+    },
+    {
+      "id": "A0.02",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=27&tmpl=component"
+    },
+    {
+      "id": "A0.03",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=30&tmpl=component"
+    },
+    {
+      "id": "A0.04",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=31&tmpl=component"
+    },
+    {
+      "id": "A0.05",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=32&tmpl=component"
+    },
+    {
+      "id": "A0.06",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=28&tmpl=component"
+    },
+    {
+      "id": "B0.07",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=33&tmpl=component"
+    },
+    {
+      "id": "B0.08",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=34&tmpl=component"
+    },
+    {
+      "id": "B0.09",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=35&tmpl=component"
+    },
+    {
+      "id": "B0.10",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=36&tmpl=component"
+    },
+    {
+      "id": "B0.11",
+      "link": "https://srhbooking.de/index.php?option=com_fabrik&view=_check_room&id=37&tmpl=component"
+    }
+  ]
+}

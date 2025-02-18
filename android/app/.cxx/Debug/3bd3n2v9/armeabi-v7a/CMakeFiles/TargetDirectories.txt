@@ -1,0 +1,2 @@
+/Users/alimansour/Desktop/myProjects/SRH-Map-main/android/app/.cxx/Debug/3bd3n2v9/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/alimansour/Desktop/myProjects/SRH-Map-main/android/app/.cxx/Debug/3bd3n2v9/armeabi-v7a/CMakeFiles/rebuild_cache.dir
