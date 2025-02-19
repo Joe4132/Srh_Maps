@@ -137,17 +137,17 @@ class ShedPage extends StatelessWidget {
 
           SizedBox(height: 100),
           Text(
-            'Please select the floor:',
+            'Please select the LabelRoom:',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 30),
           Column(
             children: [
-              _floorButton(context, '0'),
+              _LabelRoomButton(context, '0'),
               SizedBox(height: 20),
-              _floorButton(context, '1'),
+              _LabelRoomButton(context, '1'),
               SizedBox(height: 20),
-              _floorButton(context, '5'),
+              _LabelRoomButton(context, '5'),
             ],
           ),
         ],
@@ -155,10 +155,10 @@ class ShedPage extends StatelessWidget {
     );
   }
 
-  Widget _floorButton(BuildContext context, String floor) {
+  Widget _LabelRoomButton(BuildContext context, String LabelRoom) {
     return ElevatedButton(
       onPressed: () {
-        // Navigate to the MapScreen when a floor is selected
+        // Navigate to the MapScreen when a LabelRoom is selected
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => MapScreen()),
@@ -172,7 +172,7 @@ class ShedPage extends StatelessWidget {
         backgroundColor: Colors.white, // Matching the style in your screenshot
       ),
       child: Text(
-        floor,
+        LabelRoom,
         style: TextStyle(color: Colors.black, fontSize: 16),
       ),
     );
@@ -246,8 +246,9 @@ class MapScreen extends StatefulWidget {
   _MapScreenState createState() => _MapScreenState();
 }
 
+
 class _MapScreenState extends State<MapScreen> {
-  final ValueNotifier<String> selectedRoomNotifier = ValueNotifier('Room 1');
+  final ValueNotifier<String> selectedRoomNotifier = ValueNotifier('Room 18');
   List<String> rooms = [];
   ui.Image? mapImage;
   ui.Image? mapViewImage;
@@ -257,8 +258,8 @@ class _MapScreenState extends State<MapScreen> {
   List<Offset> roadPixels = [];
   Size? screenSize;
 
-  // Map to store precomputed paths
-  final Map<String, List<Offset>> precomputedPaths = {};
+  // Map to store precomputed paths and labels
+  final Map<String, Map<String, dynamic>> precomputedPaths = {};
 
   @override
   void initState() {
@@ -279,7 +280,7 @@ class _MapScreenState extends State<MapScreen> {
           roomPositions = loadedData['roomPositions'];
           roadPixels = loadedData['roadPixels'];
           precomputedPaths.addAll(loadedData['precomputedPaths']);
-          rooms = List.generate(roomPositions.length, (index) => 'Room ${index + 1}');
+          rooms = precomputedPaths.keys.toList();
         });
 
         // Debug logs
@@ -305,7 +306,7 @@ class _MapScreenState extends State<MapScreen> {
           roomPositions = loadedData['roomPositions'];
           roadPixels = loadedData['roadPixels'];
           precomputedPaths.addAll(loadedData['precomputedPaths']);
-          rooms = List.generate(roomPositions.length, (index) => 'Room ${index + 1}');
+          rooms = precomputedPaths.keys.toList();
         });
 
         // Debug logs
@@ -353,7 +354,11 @@ class _MapScreenState extends State<MapScreen> {
       final startPoint = Offset(jsonData['startPoint']['dx'], jsonData['startPoint']['dy']);
       final roomPositions = (jsonData['roomPositions'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
       final roadPixels = (jsonData['roadPixels'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
-      final precomputedPaths = (jsonData['precomputedPaths'] as Map<String, dynamic>).map((key, value) => MapEntry(key, (value as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList()));
+      final precomputedPaths = (jsonData['precomputedPaths'] as Map<String, dynamic>).map((key, value) {
+        final path = (value['path'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
+        final label = value['label'] as String;
+        return MapEntry(key, {'path': path, 'label': label});
+      });
 
       return {
         'startPoint': startPoint,
@@ -365,6 +370,76 @@ class _MapScreenState extends State<MapScreen> {
       print('Error loading points and paths from assets: $e');
       return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> loadPointsPathsFromFile() async {
+    try {
+      // Get the app's local directory
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/points-paths.json');
+
+      if (await file.exists()) {
+        // Read JSON from file
+        final jsonString = await file.readAsString();
+        final Map<String, dynamic> jsonData = jsonDecode(jsonString);
+
+        // Debug logs
+        print('File loaded successfully: ${file.path}');
+        print('Start Point: ${jsonData['startPoint']}');
+        print('Room Positions: ${jsonData['roomPositions']}');
+        print('Road Pixels: ${jsonData['roadPixels']}');
+        print('Precomputed Paths: ${jsonData['precomputedPaths']}');
+
+        // Convert JSON back to data
+        final startPoint = Offset(jsonData['startPoint']['dx'], jsonData['startPoint']['dy']);
+        final roomPositions = (jsonData['roomPositions'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
+        final roadPixels = (jsonData['roadPixels'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
+        final precomputedPaths = (jsonData['precomputedPaths'] as Map<String, dynamic>).map((key, value) {
+          final path = (value['path'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
+          final label = value['label'] as String;
+          return MapEntry(key, {'path': path, 'label': label});
+        });
+
+        return {
+          'startPoint': startPoint,
+          'roomPositions': roomPositions,
+          'roadPixels': roadPixels,
+          'precomputedPaths': precomputedPaths,
+        };
+      } else {
+        print('No points-paths file found.');
+        return null;
+      }
+    } catch (e) {
+      print('Error loading points and paths from file: $e');
+      return null;
+    }
+  }
+
+  Future<String> calculateFileHash(String assetPath) async {
+    final data = await rootBundle.load(assetPath);
+    final bytes = data.buffer.asUint8List();
+    return sha256.convert(bytes).toString();
+  }
+
+  Future<bool> hasMapFileChanged() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final hashFile = File('${directory.path}/map_hash.txt');
+
+    final currentHash = await calculateFileHash('assets/map.png');
+
+    if (await hashFile.exists()) {
+      final savedHash = await hashFile.readAsString();
+      if (savedHash == currentHash) {
+        print('Map file has not changed.');
+        return false;
+      }
+    }
+
+    // Save the new hash
+    await hashFile.writeAsString(currentHash);
+    print('Map file has changed. New hash saved.');
+    return true;
   }
 
   void _loadImagesByLoadedFile() async {
@@ -494,7 +569,7 @@ class _MapScreenState extends State<MapScreen> {
     for (var i = 0; i < roomPositions.length; i++) {
       final roomName = 'Room ${i + 1}';
       final path = _findPath(startPoint!, roomPositions[i]);
-      precomputedPaths[roomName] = path;
+      precomputedPaths[roomName] = {'path': path, 'label': 'LabelRoom ${i + 1}'};
     }
 
     print('Precomputed paths for all rooms.');
@@ -571,7 +646,10 @@ class _MapScreenState extends State<MapScreen> {
         'startPoint': {'dx': startPoint!.dx, 'dy': startPoint!.dy},
         'roomPositions': roomPositions.map((offset) => {'dx': offset.dx, 'dy': offset.dy}).toList(),
         'roadPixels': roadPixels.map((offset) => {'dx': offset.dx, 'dy': offset.dy}).toList(),
-        'precomputedPaths': precomputedPaths.map((key, value) => MapEntry(key, value.map((offset) => {'dx': offset.dx, 'dy': offset.dy}).toList())),
+        'precomputedPaths': precomputedPaths.map((key, value) => MapEntry(key, {
+          'path': value['path'].map((offset) => {'dx': offset.dx, 'dy': offset.dy}).toList(),
+          'label': value['label'],
+        })),
       };
 
       // Get the app's local directory
@@ -586,72 +664,6 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
-  Future<Map<String, dynamic>?> loadPointsPathsFromFile() async {
-    try {
-      // Get the app's local directory
-      final directory = await getApplicationDocumentsDirectory();
-      final file = File('${directory.path}/points-paths.json');
-
-      if (await file.exists()) {
-        // Read JSON from file
-        final jsonString = await file.readAsString();
-        final Map<String, dynamic> jsonData = jsonDecode(jsonString);
-
-        // Debug logs
-        print('File loaded successfully: ${file.path}');
-        print('Start Point: ${jsonData['startPoint']}');
-        print('Room Positions: ${jsonData['roomPositions']}');
-        print('Road Pixels: ${jsonData['roadPixels']}');
-        print('Precomputed Paths: ${jsonData['precomputedPaths']}');
-
-        // Convert JSON back to data
-        final startPoint = Offset(jsonData['startPoint']['dx'], jsonData['startPoint']['dy']);
-        final roomPositions = (jsonData['roomPositions'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
-        final roadPixels = (jsonData['roadPixels'] as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList();
-        final precomputedPaths = (jsonData['precomputedPaths'] as Map<String, dynamic>).map((key, value) => MapEntry(key, (value as List).map((offset) => Offset(offset['dx'], offset['dy'])).toList()));
-
-        return {
-          'startPoint': startPoint,
-          'roomPositions': roomPositions,
-          'roadPixels': roadPixels,
-          'precomputedPaths': precomputedPaths,
-        };
-      } else {
-        print('No points-paths file found.');
-        return null;
-      }
-    } catch (e) {
-      print('Error loading points and paths from file: $e');
-      return null;
-    }
-  }
-
-  Future<String> calculateFileHash(String assetPath) async {
-    final data = await rootBundle.load(assetPath);
-    final bytes = data.buffer.asUint8List();
-    return sha256.convert(bytes).toString();
-  }
-
-  Future<bool> hasMapFileChanged() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final hashFile = File('${directory.path}/map_hash.txt');
-
-    final currentHash = await calculateFileHash('assets/map.png');
-
-    if (await hashFile.exists()) {
-      final savedHash = await hashFile.readAsString();
-      if (savedHash == currentHash) {
-        print('Map file has not changed.');
-        return false;
-      }
-    }
-
-    // Save the new hash
-    await hashFile.writeAsString(currentHash);
-    print('Map file has changed. New hash saved.');
-    return true;
-  }
-
   @override
   Widget build(BuildContext context) {
     screenSize = MediaQuery.of(context).size;
@@ -662,26 +674,48 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ValueListenableBuilder<String>(
-              valueListenable: selectedRoomNotifier,
-              builder: (context, selectedRoom, _) {
-                return DropdownButton<String>(
-                  value: selectedRoom,
-                  onChanged: (String? newValue) {
-                    selectedRoomNotifier.value = newValue!;
+            child: Column( // Wrap in a Column to stack the text and dropdown
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Select Room ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)), // Add this line
+                SizedBox(height: 8), // Add some spacing
+                ValueListenableBuilder<String>(
+                  valueListenable: selectedRoomNotifier,
+                  builder: (context, selectedRoom, _) {
+
+                    // Sort rooms based on their labels before mapping
+                    final sortedRooms = rooms.toList()
+                      ..sort((a, b) {
+                        final labelA = precomputedPaths[a]!['label'] ?? a;
+                        final labelB = precomputedPaths[b]!['label'] ?? b;
+                        return labelA.compareTo(labelB); // Sort alphabetically
+                      });
+
+                    return DropdownButton<String>(
+                      value: selectedRoom,
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          selectedRoomNotifier.value = newValue;
+                        }
+                      },
+                      items: sortedRooms.map((room) {
+                        final label = precomputedPaths[room]!['label'] ?? room;
+                        return DropdownMenuItem(
+                          value: room,
+                          child: Text(label),
+                        );
+                      }).toList(),
+                    );
                   },
-                  items: rooms.map((room) {
-                    return DropdownMenuItem(value: room, child: Text(room));
-                  }).toList(),
-                );
-              },
+                ),
+              ],
             ),
           ),
           Expanded(
             child: mapViewImage == null
                 ? Center(child: CircularProgressIndicator())
                 : InteractiveViewer(
-              boundaryMargin: EdgeInsets.all(double.infinity), // Allow panning beyond the edges
+              boundaryMargin: EdgeInsets.all(double.infinity),
               minScale: 0.1,
               maxScale: 4.0,
               transformationController: _transformationController,
@@ -691,8 +725,8 @@ class _MapScreenState extends State<MapScreen> {
                 child: ValueListenableBuilder<String>(
                   valueListenable: selectedRoomNotifier,
                   builder: (context, selectedRoom, _) {
-                    final path = precomputedPaths[selectedRoom] ?? [];
-                    print('Selected Room: $selectedRoom, Path: $path'); // Debug log
+                    final path = precomputedPaths[selectedRoom]?['path'] ?? [];
+                    print('Selected Room: $selectedRoom, Path: $path');
                     return CustomPaint(
                       size: Size(mapViewImage!.width.toDouble(), mapViewImage!.height.toDouble()),
                       painter: MapPainter(selectedRoom, mapViewImage!, startPoint, roomPositions, path),
@@ -705,8 +739,14 @@ class _MapScreenState extends State<MapScreen> {
         ],
       ),
     );
+
+
+
+
   }
 }
+
+
 
 class MapPainter extends CustomPainter {
   final String selectedRoom;
@@ -736,7 +776,7 @@ class MapPainter extends CustomPainter {
 
     if (path.isNotEmpty) {
       paint.color = Colors.red;
-      paint.style =  PaintingStyle.stroke;
+      paint.style = PaintingStyle.stroke;
       paint.strokeWidth = 10;
 
       for (var i = 0; i < path.length - 1; i++) {
